@@ -1,0 +1,150 @@
+{% extends "admin/base_site.html" %}
+{% load staticfiles %}
+
+{% block extrastyle %}
+	<link rel="stylesheet" href="{% static "css/jquery-plugin-circliful.css" %}">
+	<link rel="stylesheet" href="{% static "css/sweetalert.css" %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+    <span>Inicio &rsaquo; Tablero</span>
+{% endblock %}
+
+{% block content %}
+	{% csrf_token %}
+	{% for self in periodo %}
+		<input type="hidden" id="id_periodo" value="{{self.id}}">
+	{% endfor %}
+    <div id="content-main">
+    	<div class="center">
+	    	<div class="titulo">Tablero de Mando ASC</div>
+	    	<div class="subtitulo">
+	    		{% for self in periodo %}
+	    			{{self}}
+	    		{% endfor %}
+	    	</div>
+    	</div>
+    	<div class="row">
+			<div id="yourcircle" class="svg-container" data-info="cumplimiento" data-color="{{total.color}}" data-value="{{total.total|floatformat:0}}"></div>
+
+    	</div>
+    	<div class="row">
+    		{% for self in perspectivas %}
+    			<div class="calugas" data-id="{{ self.id }}" style="background-color:{{self.color}};">
+    				<div class="peso-triangulo"></div>
+    				<div class="peso-porcentaje">{{self.peso}}</div>
+    				<h4>{{ self.descripcion|upper }}</h4>
+					<div class="flex-column">
+    					<div class="mes_anterior">
+    						<div>PERIODO ANTERIOR</div>
+    						<div><i class="icono-{% if self.anterior < 0 %}down{%else%}up{% endif %}"></i> {{self.anterior|default:"0"}}%</div>
+    					</div>
+    					<div class="porcentaje-derecha">{{self.resultado|floatformat:0}}%</div>
+    				</div>
+    				<div class="flex-column">
+    					<div class="progress">
+    						{% for i in semaforo %}
+    							{% if self.resultado >= i.desde and self.resultado <= i.hasta %}
+    								<div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="{{self.resultado|floatformat:0}}" aria-valuemin="0" aria-valuemax="100" style="width: {{self.resultado|floatformat:0}}%; background-color: {{i.color__hexadecimal}};"></div>
+    							{% endif %}
+    						{% endfor %}
+						</div>
+    				</div>
+    			</div>
+    		{% endfor %}
+    	</div>
+    	<div class="row panel-objetivos" style="display: none;">
+    		<div class="panel panel-primary">
+    			<div class="panel-heading">
+    				Perspectiva seleccionada
+    			</div>
+    			<div class="panel-body">
+				    <div class="graph">
+				    	<div id="graph-objetivo" style="min-width: 300px; height: 200px;"></div>
+				    	<span></span>
+				    </div>
+				    <div class="objetivos">
+				    	<h5>Objetivos</h5>
+				    	<div class="lista_objetivos"></div>
+				    </div>
+				</div>
+    		</div>
+    	</div>
+    	<div class="row panel-indicadores" style="display:none;">
+    		<div class="panel panel-primary">
+    			<div class="panel-heading"></div>
+    			<div class="panel-body" role="tabpanel">
+    				<div id="contenedor_indicadores"></div>
+ 					<div>
+	 					<div class="aperturas"></div>
+	    				<div class="flex-column">
+						    <ul class="nav nav-tabs" role="tablist" id="tabs-kpi">
+						    	{% for self in unidades %}
+						    		{% if forloop.first %}
+						    			<li role="presentation" class="active"><a href="#tab-{{self.id}}" aria-controls="tab-{{self.id}}" role="tab" data-toggle="tab">{{self}}</a></li>
+						    		{% else %}
+						    			<li role="presentation"><a href="#tab-{{self.id}}" aria-controls="tab-{{self.id}}" role="tab" data-toggle="tab">{{self}}</a></li>
+						    		{% endif %}
+						    	{% endfor %}
+							</ul>
+							<div style="display: flex; justify-content: flex-end;">
+								<span style="margin-right: 10px; padding-top: 5px;">Resumen Ciclo: </span>
+								<select name="ciclos" id="ciclos">
+									<option value="0">Seleccionar</option>
+									{% for self in ciclos %}
+										<option value="{{self.id}}">Ciclo: {{self}}</option>
+									{% endfor %}
+								</select>
+							</div>
+						</div>
+						<div class="tab-content">
+							{% for self in unidades %}
+								{% if forloop.first %}
+									<div role="tabpanel" class="tab-pane active" id="tab-{{self.id}}">
+								{% else %}
+									<div role="tabpanel" class="tab-pane" id="tab-{{self.id}}">
+								{% endif %}
+									<table class="table table-responsive">
+										<thead>
+											<tr>
+												<th>Lider</th>
+												<th>Proyecto</th>
+												<th>KPI</th>
+												<th>Meta</th>
+												<th>Status</th>
+												<th colspan="2">Evaluación</th>
+											</tr>
+										</thead>
+										<tbody id="tbody-tab-{{self.id}}"></tbody>
+									</table>
+								</div>
+							{% endfor %}
+						</div>
+					</div>
+				</div>
+    		</div>
+    	</div>
+	</div>
+	<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+	  <div class="modal-dialog" role="document" style="width: 600px;">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+	        <h4 class="modal-title" id="myModalLabel">Indicador General de Avance por Unidad</h4>
+	      </div>
+	      <div class="modal-body" id="myModalBody" style="display: flex; justify-content: center;">
+	      		<div id="myModalGraph" style="height: 400px;width: 550px;"></div>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+{% endblock %}
+
+{% block extra_scripts %}
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+	<script src="http://code.highcharts.com/highcharts.js"></script>
+	<script src="http://code.highcharts.com/highcharts-more.js"></script>
+	<script src="{% static "js/jquery.circliful.js" %}"></script>
+	<script src="{% static "js/sweetalert.min.js" %}"></script>
+	<script src="{% static "js/tablero.js" %}"></script>
+{% endblock extra_scripts %}
