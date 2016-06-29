@@ -1,5 +1,5 @@
 from django.http import HttpResponse, Http404
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, DetailView
 from django.db.models import Avg
 
 from .models import *
@@ -17,6 +17,77 @@ class IndexView(TemplateView):
         total = 0
         anterior = 0
         context['periodo'] = Periodo.objects.all().order_by('-id')[:1]
+        for i in context['periodo']:
+            periodo = i.id
+        resultados = TotalDimension.objects.values(
+            'indicador_id', 'resultado', 'id').filter(periodo_id=periodo)
+        perspectivas = Perspectiva.objects.values(
+            'id', 'descripcion', 'peso', 'color')
+        for x in perspectivas:
+            for i in resultados:
+                if (x['id'] == i['indicador_id']):
+                    if TotalDimension.objects.all().filter(
+                            periodo_id=periodo - 1,
+                            indicador_id=x['id']).exists():
+                        qs = TotalDimension.objects.values(
+                            'resultado').filter(
+                            periodo_id=periodo - 1, indicador_id=x['id'])
+                        for rs in qs:
+                            anterior = round(
+                                i['resultado'] - rs['resultado'], 0)
+                    else:
+                        anterior = 0
+                    context['perspectivas'].append({
+                        'resultado': i['resultado'],
+                        'id': x['id'],
+                        'anterior': 0,
+                        'color': x['color'],
+                        'peso': x['peso'],
+                        'descripcion': x['descripcion'],
+                        'anterior': anterior
+                    })
+        for x in resultados:
+            if TotalDimension.objects.all().filter(
+                    periodo_id=periodo - 1).exists():
+                qs = TotalDimension.objects.values(
+                    'resultado').filter(periodo_id=periodo - 1)
+                for rs in qs:
+                    anterior = round(x['resultado'] - rs['resultado'], 0)
+            else:
+                anterior = 0
+            perspectivas = Perspectiva.objects.all().filter(
+                id=x['indicador_id']
+            )
+            for i in perspectivas:
+                total += x['resultado'] * i.peso
+        semaforo = Semaforo.objects.values(
+            'color__hexadecimal', 'desde', 'hasta')
+        for x in semaforo:
+            if total >= x['desde'] and total <= x['hasta']:
+                context['total'] = {
+                    'total': str(total),
+                    'color': x['color__hexadecimal']
+                }
+        context['unidades'] = Unidad.objects.all()
+        context['ciclos'] = Ciclo.objects.all().order_by('-id')
+        context['semaforo'] = Semaforo.objects.values(
+            'desde', 'hasta', 'color__hexadecimal'
+        )
+        return context
+
+
+class IndexDetailView(DetailView):
+    model = Periodo
+    template_name = 'index.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(IndexView, self).get_context_data(**kwargs)
+        context['perspectivas'] = []
+        periodo = 0
+        total = 0
+        anterior = 0
+        context['periodo'] = Periodo.objects.all().filter(
+            id=self.get_object().pk).order_by('-id')[:1]
         for i in context['periodo']:
             periodo = i.id
         resultados = TotalDimension.objects.values(

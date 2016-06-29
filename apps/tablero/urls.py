@@ -1,9 +1,10 @@
 from django.conf.urls import url
-from .views import IndexView
+from .views import IndexView, IndexDetailView
 from . import views
 
 urlpatterns = [
     url(r'^$', IndexView.as_view(), name='index'),
+    url(r'^/(?P<pk>\d+)/$', IndexDetailView.as_view(), name='index_detail'),
     url(r'^carga_objetivos/$', views.carga_objetivos),
     url(r'^carga_apertura_indicador/$', views.carga_apertura_indicador),
     url(r'^carga_aperturas_por_indicador/$',
